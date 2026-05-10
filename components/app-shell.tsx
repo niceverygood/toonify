@@ -52,15 +52,19 @@ export function AppShell() {
   };
 
   return (
-    <div className="flex min-h-screen flex-col">
+    // `toonify-canvas-bg` paints the studio with the same purple-pink
+    // radial bleed used on the landing hero. Header is sticky over it,
+    // sidebar gets its own slightly-darker surface, main gets a soft
+    // `toonify-surface` card so it lifts off the canvas glow.
+    <div className="flex min-h-screen flex-col toonify-canvas-bg">
       <AppHeader onOpenSettings={openSettings} />
       <div className="flex flex-1">
-        <aside className="w-[280px] shrink-0 border-r bg-sidebar text-sidebar-foreground p-4 hidden md:flex md:flex-col gap-3">
+        <aside className="w-[280px] shrink-0 border-r border-sidebar-border bg-sidebar/80 backdrop-blur-sm text-sidebar-foreground p-4 hidden md:flex md:flex-col gap-3">
           <CharacterList />
         </aside>
         <main className="flex-1 p-6">
           <div className="max-w-3xl mx-auto space-y-6">
-            <section>
+            <section className="toonify-surface p-5">
               <StoryInput onRequestApiKey={openSettings} />
             </section>
             <PromptsDebugPanel />

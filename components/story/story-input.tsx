@@ -274,7 +274,7 @@ export function StoryInput({ onRequestApiKey }: StoryInputProps) {
           size="lg"
           onClick={handleGenerate}
           disabled={isGenerating || !story.trim()}
-          className="min-w-36"
+          className="min-w-36 toonify-gradient-bg hover:opacity-95 hover:shadow-[0_12px_30px_-10px_rgba(255,138,171,0.55),0_4px_12px_rgba(122,92,255,0.35)] disabled:opacity-50 disabled:hover:shadow-none transition-all border-0 font-semibold"
         >
           {isGenerating ? (
             <>

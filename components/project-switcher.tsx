@@ -144,7 +144,7 @@ export function ProjectSwitcher() {
       <Button
         variant="ghost"
         size="sm"
-        className="text-primary-foreground hover:bg-white/10 hover:text-primary-foreground max-w-[240px]"
+        className="text-foreground/80 hover:bg-white/10 hover:text-foreground max-w-[240px]"
         onClick={() => setOpen(true)}
       >
         <FolderOpen className="h-3.5 w-3.5 mr-1" />
