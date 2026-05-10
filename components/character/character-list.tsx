@@ -9,12 +9,19 @@ import { CharacterCard } from "./character-card";
 import { CharacterModal } from "./character-modal";
 import { SampleStarter } from "./sample-starter";
 
+// Stable empty-array reference so the Zustand selector below returns a
+// referentially-equal snapshot when there is no current project. Returning
+// a freshly-constructed `[]` each render causes
+// useSyncExternalStore's getServerSnapshot warning ("infinite loop") and
+// can churn downstream consumers.
+const EMPTY_IDS: readonly string[] = [];
+
 export function CharacterList() {
   const characters = useWebtoonStore((s) => s.characters);
   const charactersLoaded = useWebtoonStore((s) => s.charactersLoaded);
   const loadCharacters = useWebtoonStore((s) => s.loadCharacters);
   const projectCharIds = useWebtoonStore(
-    (s) => s.currentProject?.characterIds ?? [],
+    (s) => s.currentProject?.characterIds ?? EMPTY_IDS,
   );
 
   const [modalOpen, setModalOpen] = useState(false);
