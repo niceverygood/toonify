@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useRef, useCallback } from "react";
-import { Upload, X, ImagePlus, Sparkles, Loader2 } from "lucide-react";
+import { Upload, X, ImagePlus, Sparkles, Loader2, Wand2 } from "lucide-react";
 import { toast } from "sonner";
 import {
   Dialog,
@@ -18,6 +18,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { cn, resizeImageBlob } from "@/lib/utils";
 import { useWebtoonStore } from "@/lib/store";
 import { generateCharacterPortraitWithFallback } from "@/lib/providers";
+import { generateCharacterPrompt } from "@/lib/gemini/generate-character-prompt";
 import { generateMockPortrait } from "@/lib/mock-images";
 import {
   hasApiKey,
@@ -55,6 +56,7 @@ export function CharacterModal({
   const [isDragging, setIsDragging] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [generatingPortrait, setGeneratingPortrait] = useState(false);
+  const [generatingPrompt, setGeneratingPrompt] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Initialize / reset on open
@@ -118,6 +120,34 @@ export function CharacterModal({
       if (removed) URL.revokeObjectURL(removed.url);
       return next;
     });
+  };
+
+  // Expand the user's keyword/seed (whatever they've typed in name +
+  // description) into a fully-fleshed character card via Gemini text.
+  // Result fills the two fields in place — the user can still tweak before
+  // saving or generating a portrait.
+  const handleGeneratePrompt = async () => {
+    if (!hasApiKey()) {
+      toast.error("Gemini API 키가 설정되지 않았습니다. 헤더 ⚙️에서 등록해주세요.");
+      return;
+    }
+    setGeneratingPrompt(true);
+    try {
+      const out = await generateCharacterPrompt({
+        nameSeed: name,
+        descriptionSeed: description,
+      });
+      setName(out.name);
+      setDescription(out.description);
+      toast.success(`"${out.name}" 캐릭터 프롬프트 작성 완료`);
+    } catch (err) {
+      console.error("[generate-character-prompt] failed", err);
+      toast.error(
+        err instanceof Error ? err.message : "프롬프트 작성에 실패했습니다.",
+      );
+    } finally {
+      setGeneratingPrompt(false);
+    }
   };
 
   // Background portrait generation: closes the modal immediately and saves
@@ -324,21 +354,50 @@ export function CharacterModal({
             <Label htmlFor="char-name">이름</Label>
             <Input
               id="char-name"
-              placeholder="예: 김지영"
+              placeholder="예: 김지영 (또는 비워두고 [AI로 작성] 클릭 시 자동 생성)"
               value={name}
               onChange={(e) => setName(e.target.value)}
+              disabled={generatingPrompt}
               autoFocus
             />
           </div>
 
           <div className="space-y-1.5">
-            <Label htmlFor="char-desc">설명</Label>
+            <div className="flex items-center justify-between">
+              <Label htmlFor="char-desc" className="flex items-center gap-2">
+                <span>설명</span>
+                <span className="text-[11px] text-muted-foreground font-normal">
+                  키워드만 입력하고 [AI로 작성]을 누르세요
+                </span>
+              </Label>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={handleGeneratePrompt}
+                disabled={generatingPrompt || generatingPortrait || submitting}
+                className="h-7 text-xs"
+              >
+                {generatingPrompt ? (
+                  <>
+                    <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                    작성 중...
+                  </>
+                ) : (
+                  <>
+                    <Wand2 className="h-3 w-3 mr-1" />
+                    AI로 작성
+                  </>
+                )}
+              </Button>
+            </div>
             <Textarea
               id="char-desc"
-              placeholder="예: 38세, 보험설계사, 부드러운 미소, 단정한 단발머리"
+              placeholder="예: 38세, 보험설계사, 부드러운 미소, 단정한 단발머리 (또는 키워드만 적고 [AI로 작성])"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               rows={3}
+              disabled={generatingPrompt}
             />
           </div>
 
