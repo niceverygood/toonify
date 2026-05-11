@@ -20,12 +20,13 @@ import { useWebtoonStore } from "@/lib/store";
 import { generateCharacterPortraitWithFallback } from "@/lib/providers";
 import { generateCharacterPrompt } from "@/lib/gemini/generate-character-prompt";
 import { generateMockPortrait } from "@/lib/mock-images";
+import { StyleSelector } from "@/components/story/style-selector";
 import {
   hasApiKey,
   hasProviderKey,
   getActiveImageProvider,
 } from "@/lib/storage/api-key";
-import type { Character } from "@/lib/types";
+import { getStyleEnglishHint, type Character } from "@/lib/types";
 
 const MAX_REF_IMAGES = 3;
 
@@ -49,9 +50,16 @@ export function CharacterModal({
   const isEdit = Boolean(character);
   const addCharacter = useWebtoonStore((s) => s.addCharacter);
   const updateCharacter = useWebtoonStore((s) => s.updateCharacter);
+  // Default the portrait style to whatever the current project is using,
+  // so the character matches the rest of the comic. Falls back to the
+  // modern slice-of-life preset when no project is loaded yet.
+  const projectStyle = useWebtoonStore(
+    (s) => s.currentProject?.style ?? "modern-slice-of-life",
+  );
 
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
+  const [style, setStyle] = useState<string>("modern-slice-of-life");
   const [images, setImages] = useState<PreviewImage[]>([]);
   const [isDragging, setIsDragging] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -64,6 +72,11 @@ export function CharacterModal({
     if (!open) return;
     setName(character?.name ?? "");
     setDescription(character?.description ?? "");
+    // For a new character, mirror the project's current style so the
+    // portrait matches future panels. Edit mode keeps whatever style the
+    // user picks (we don't persist style on Character — it's just a
+    // hint for THIS portrait generation).
+    setStyle(projectStyle);
     if (character) {
       const previews = character.referenceImages.map((blob) => ({
         blob,
@@ -74,7 +87,7 @@ export function CharacterModal({
       setImages([]);
     }
     setIsDragging(false);
-  }, [open, character]);
+  }, [open, character, projectStyle]);
 
   // Revoke object URLs when component unmounts or images change
   useEffect(() => {
@@ -233,6 +246,11 @@ export function CharacterModal({
     onOpenChange(false);
     toast.info(`"${trimmedName}" 백그라운드에서 이미지 생성 시작 (최대 ~3.5분)`);
 
+    // Resolve the chosen style to its English hint here (on the foreground
+    // thread) so the closure below doesn't need access to the React state
+    // after the modal closes.
+    const styleHint = getStyleEnglishHint(style);
+
     // Step 3 — Fire-and-forget the real generation.
     void (async () => {
       try {
@@ -240,6 +258,7 @@ export function CharacterModal({
           await generateCharacterPortraitWithFallback({
             name: trimmedName,
             description: trimmedDesc,
+            styleHint,
           });
         const resized = await resizeImageBlob(blob, 1024, 0.85);
 
@@ -399,6 +418,16 @@ export function CharacterModal({
               rows={3}
               disabled={generatingPrompt}
             />
+          </div>
+
+          {/* Style picker — drives the AI-portrait generator's English
+              style hint. Defaults to the project's current style so the
+              character matches future panels by default. */}
+          <div className="space-y-1.5">
+            <StyleSelector value={style} onChange={setStyle} />
+            <div className="text-[11px] text-muted-foreground">
+              [AI로 생성] 초상화의 화풍을 결정합니다. 이 프로젝트의 컷 스타일에 맞추는 것이 일관성에 좋습니다.
+            </div>
           </div>
 
           <div className="space-y-1.5">

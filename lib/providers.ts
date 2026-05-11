@@ -69,9 +69,12 @@ export async function generatePanelImage(input: GenerateInput): Promise<Blob> {
 
 // Generate a 1:1 character reference portrait from name+description text only.
 // Routes through the same provider toggle as panel generation.
+// `styleHint` is an English style fragment (from getStyleEnglishHint) so the
+// portrait matches the panel style the user picked for this project.
 export async function generateCharacterPortrait(input: {
   name: string;
   description: string;
+  styleHint?: string;
 }): Promise<Blob> {
   const provider = getActiveImageProvider();
   if (provider === "openai") return generateCharacterPortraitOpenAI(input);
@@ -125,7 +128,7 @@ function otherProvider(p: ImageProviderId): ImageProviderId {
 
 async function callPortrait(
   provider: ImageProviderId,
-  input: { name: string; description: string },
+  input: { name: string; description: string; styleHint?: string },
 ): Promise<Blob> {
   return provider === "openai"
     ? generateCharacterPortraitOpenAI(input)
@@ -144,6 +147,7 @@ async function callPanel(
 export async function generateCharacterPortraitWithFallback(input: {
   name: string;
   description: string;
+  styleHint?: string;
 }): Promise<FallbackResult> {
   const primary = getActiveImageProvider();
   const secondary = otherProvider(primary);

@@ -7,6 +7,8 @@ import { base64ToBlob, sleep } from "@/lib/utils";
 interface PortraitInput {
   name: string;
   description: string;
+  // Same shape as the Gemini side — resolved English style hint or empty.
+  styleHint?: string;
 }
 
 const IMAGE_MODEL = "gpt-image-2";
@@ -16,17 +18,25 @@ const SQUARE_SIZE = "1024x1024";
 const MAX_RETRIES = 5;
 const RETRY_DELAYS_MS = [15000, 30000, 45000, 60000, 60000];
 
+const DEFAULT_STYLE_HINT =
+  "modern Korean slice-of-life webtoon, soft cel-shading, clean line art, expressive face";
+
 function isMockMode(): boolean {
   return isMockImagesEnabled();
 }
 
-function buildPortraitPrompt({ name, description }: PortraitInput): string {
+function buildPortraitPrompt({
+  name,
+  description,
+  styleHint,
+}: PortraitInput): string {
+  const effectiveStyle = (styleHint?.trim() || DEFAULT_STYLE_HINT);
   return [
     `Character reference portrait of "${name}".`,
     `Description: ${description}.`,
     "",
     "Composition: solo character, three-quarter view of upper body, neutral pose, looking at the camera, plain neutral background, soft even lighting.",
-    "Style: modern Korean slice-of-life webtoon, soft cel-shading, clean line art, expressive face.",
+    `Style: ${effectiveStyle}.`,
     "CRITICAL: square 1:1 composition. No text, no speech bubbles, no written language anywhere in the image. Face clearly visible so this can serve as a consistent reference for later panels.",
   ].join("\n");
 }

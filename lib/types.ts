@@ -231,3 +231,20 @@ export const STYLE_PRESETS: StylePreset[] = [
     englishHint: "",
   },
 ];
+
+/**
+ * Resolves a stored style value (preset id or free-text custom string)
+ * into the English hint that gets injected into the image-gen prompt.
+ *
+ * - Preset id → `STYLE_PRESETS[id].englishHint`
+ * - Free-text (used when the user picks the "custom" preset and types
+ *   their own description) → returned as-is.
+ * - Empty / unknown → empty string so callers can decide their fallback.
+ */
+export function getStyleEnglishHint(styleValue: string): string {
+  const preset = STYLE_PRESETS.find((p) => p.id === styleValue);
+  if (preset) return preset.englishHint;
+  // Anything that doesn't match a known id is treated as a free-text
+  // custom style — the original "custom" preset stores its body here.
+  return styleValue.trim();
+}

@@ -9,6 +9,10 @@ import { base64ToBlob, sleep } from "@/lib/utils";
 interface PortraitInput {
   name: string;
   description: string;
+  // English style hint to inject into the prompt. Comes from
+  // getStyleEnglishHint() (preset englishHint or free-text custom).
+  // Empty falls back to the original modern slice-of-life default.
+  styleHint?: string;
 }
 
 // Match generate-image.ts — Tier 1 paid RPM is tight, so up to 5 attempts
@@ -16,17 +20,25 @@ interface PortraitInput {
 const MAX_RETRIES = 5;
 const RETRY_DELAYS_MS = [15000, 30000, 45000, 60000, 60000];
 
+const DEFAULT_STYLE_HINT =
+  "modern Korean slice-of-life webtoon style, soft cel-shading, clean line art, expressive face";
+
 function isMockMode(): boolean {
   return isMockImagesEnabled();
 }
 
-function buildPortraitPrompt({ name, description }: PortraitInput): string {
+function buildPortraitPrompt({
+  name,
+  description,
+  styleHint,
+}: PortraitInput): string {
+  const effectiveStyle = (styleHint?.trim() || DEFAULT_STYLE_HINT);
   return [
     `Character reference portrait of "${name}".`,
     `Description: ${description}.`,
     "",
     "Composition: solo character, three-quarter view of upper body, neutral pose, looking at the camera, plain neutral background, soft even lighting.",
-    "Style: modern Korean slice-of-life webtoon style, soft cel-shading, clean line art, expressive face.",
+    `Style: ${effectiveStyle}.`,
     "CRITICAL: 1:1 square aspect ratio. No text, no speech bubbles, no written language anywhere in the image. The face should be clearly visible and consistent so this image can be reused as a character reference.",
   ].join("\n");
 }
