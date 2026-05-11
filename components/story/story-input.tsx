@@ -53,11 +53,19 @@ export function StoryInput({ onRequestApiKey }: StoryInputProps) {
       onRequestApiKey();
       return;
     }
+    // Only the characters explicitly added to this project should feed
+    // the story. Library-only characters (사용 중 토글이 꺼진 것들)는
+    // 다른 프로젝트용이므로 제외 — passing all of them caused the model
+    // to write every library entry into the story even when the project
+    // only used a couple of them.
+    const activeCharacters = characters.filter((c) =>
+      project.characterIds.includes(c.id),
+    );
     setGeneratingStory(true);
     try {
       const text = await generateStory({
         seed: story.trim() || undefined,
-        characters,
+        characters: activeCharacters,
       });
       updateProject({ story: text });
       toast.success(
