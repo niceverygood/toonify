@@ -13,6 +13,9 @@ interface PortraitInput {
   // getStyleEnglishHint() (preset englishHint or free-text custom).
   // Empty falls back to the original modern slice-of-life default.
   styleHint?: string;
+  // Short English subject hint from getGenderEnglishHint(). When empty,
+  // the model infers gender from the description.
+  genderHint?: string;
 }
 
 // Match generate-image.ts — Tier 1 paid RPM is tight, so up to 5 attempts
@@ -31,10 +34,16 @@ function buildPortraitPrompt({
   name,
   description,
   styleHint,
+  genderHint,
 }: PortraitInput): string {
   const effectiveStyle = (styleHint?.trim() || DEFAULT_STYLE_HINT);
+  // Embed the gender fragment directly into the subject line so the
+  // model treats it as a hard constraint rather than a passing hint.
+  const subject = genderHint?.trim()
+    ? `Character reference portrait of "${name}", ${genderHint.trim()}.`
+    : `Character reference portrait of "${name}".`;
   return [
-    `Character reference portrait of "${name}".`,
+    subject,
     `Description: ${description}.`,
     "",
     "Composition: solo character, three-quarter view of upper body, neutral pose, looking at the camera, plain neutral background, soft even lighting.",

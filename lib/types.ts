@@ -1,12 +1,33 @@
 // Shared TypeScript types for Toonify (codename: webtoon-studio).
 // Single source of truth — referenced by store, db, and components.
 
+// Optional gender tag. Persisted on the character so portrait/panel
+// generation can render the character consistently across multiple
+// projects and re-generations. `undefined` means "unspecified" — the
+// model is left to infer from the description and reference image.
+export type CharacterGender = "female" | "male";
+
 export interface Character {
   id: string;
   name: string;
   description: string;
   referenceImages: Blob[];
   createdAt: number;
+  gender?: CharacterGender;
+}
+
+export const GENDER_LABELS_KR: Record<CharacterGender, string> = {
+  female: "여성",
+  male: "남성",
+};
+
+// English fragment injected into image-gen prompts. Kept short so it
+// composes with style hints and the user's free-text description
+// without overrunning the model.
+export function getGenderEnglishHint(gender?: CharacterGender): string {
+  if (gender === "female") return "adult woman";
+  if (gender === "male") return "adult man";
+  return "";
 }
 
 export interface DialogueLine {

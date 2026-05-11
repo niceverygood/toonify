@@ -1,7 +1,17 @@
 "use client";
 
 import { useEffect, useState, useRef, useCallback } from "react";
-import { Upload, X, ImagePlus, Sparkles, Loader2, Wand2 } from "lucide-react";
+import {
+  Upload,
+  X,
+  ImagePlus,
+  Sparkles,
+  Loader2,
+  Wand2,
+  Venus,
+  Mars,
+  HelpCircle,
+} from "lucide-react";
 import { toast } from "sonner";
 import {
   Dialog,
@@ -26,9 +36,54 @@ import {
   hasProviderKey,
   getActiveImageProvider,
 } from "@/lib/storage/api-key";
-import { getStyleEnglishHint, type Character } from "@/lib/types";
+import {
+  getStyleEnglishHint,
+  getGenderEnglishHint,
+  type Character,
+  type CharacterGender,
+} from "@/lib/types";
 
 const MAX_REF_IMAGES = 3;
+
+// Segmented gender option button. Visually equivalent to a radio but
+// uses plain buttons so we don't need to wire form state — `current`
+// drives the active style class.
+function GenderOption({
+  value,
+  current,
+  onSelect,
+  icon,
+  label,
+  disabled,
+}: {
+  value: CharacterGender | undefined;
+  current: CharacterGender | undefined;
+  onSelect: (v: CharacterGender | undefined) => void;
+  icon: React.ReactNode;
+  label: string;
+  disabled?: boolean;
+}) {
+  const active = value === current;
+  return (
+    <button
+      type="button"
+      role="radio"
+      aria-checked={active}
+      disabled={disabled}
+      onClick={() => onSelect(value)}
+      className={cn(
+        "flex items-center justify-center gap-1.5 rounded-sm px-2 py-1.5 text-xs font-medium transition-colors",
+        active
+          ? "bg-primary text-primary-foreground shadow-sm"
+          : "text-foreground/70 hover:bg-muted/50 hover:text-foreground",
+        disabled && "opacity-50 pointer-events-none",
+      )}
+    >
+      {icon}
+      <span>{label}</span>
+    </button>
+  );
+}
 
 interface CharacterModalProps {
   open: boolean;
@@ -59,6 +114,8 @@ export function CharacterModal({
 
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
+  // `undefined` means "미지정" — model can infer from description.
+  const [gender, setGender] = useState<CharacterGender | undefined>(undefined);
   const [style, setStyle] = useState<string>("modern-slice-of-life");
   const [images, setImages] = useState<PreviewImage[]>([]);
   const [isDragging, setIsDragging] = useState(false);
@@ -72,6 +129,7 @@ export function CharacterModal({
     if (!open) return;
     setName(character?.name ?? "");
     setDescription(character?.description ?? "");
+    setGender(character?.gender);
     // For a new character, mirror the project's current style so the
     // portrait matches future panels. Edit mode keeps whatever style the
     // user picks (we don't persist style on Character — it's just a
@@ -149,6 +207,7 @@ export function CharacterModal({
       const out = await generateCharacterPrompt({
         nameSeed: name,
         descriptionSeed: description,
+        gender,
       });
       setName(out.name);
       setDescription(out.description);
@@ -218,6 +277,7 @@ export function CharacterModal({
         await updateCharacter(charId, {
           name: trimmedName,
           description: trimmedDesc,
+          gender,
           referenceImages: blobsWithPlaceholder,
         });
       } else {
@@ -225,6 +285,7 @@ export function CharacterModal({
           id: charId,
           name: trimmedName,
           description: trimmedDesc,
+          gender,
           referenceImages: blobsWithPlaceholder,
           createdAt: Date.now(),
         });
@@ -246,10 +307,11 @@ export function CharacterModal({
     onOpenChange(false);
     toast.info(`"${trimmedName}" 백그라운드에서 이미지 생성 시작 (최대 ~3.5분)`);
 
-    // Resolve the chosen style to its English hint here (on the foreground
-    // thread) so the closure below doesn't need access to the React state
-    // after the modal closes.
+    // Resolve the chosen style + gender to their English hints here (on
+    // the foreground thread) so the closure below doesn't need access to
+    // the React state after the modal closes.
     const styleHint = getStyleEnglishHint(style);
+    const genderHint = getGenderEnglishHint(gender);
 
     // Step 3 — Fire-and-forget the real generation.
     void (async () => {
@@ -259,6 +321,7 @@ export function CharacterModal({
             name: trimmedName,
             description: trimmedDesc,
             styleHint,
+            genderHint,
           });
         const resized = await resizeImageBlob(blob, 1024, 0.85);
 
@@ -330,6 +393,7 @@ export function CharacterModal({
         await updateCharacter(character.id, {
           name: name.trim(),
           description: description.trim(),
+          gender,
           referenceImages: blobs,
         });
         toast.success(`"${name.trim()}" 캐릭터가 수정되었습니다.`);
@@ -338,6 +402,7 @@ export function CharacterModal({
           id: crypto.randomUUID(),
           name: name.trim(),
           description: description.trim(),
+          gender,
           referenceImages: blobs,
           createdAt: Date.now(),
         };
@@ -379,6 +444,43 @@ export function CharacterModal({
               disabled={generatingPrompt}
               autoFocus
             />
+          </div>
+
+          {/* Gender — segmented toggle. Optional; "미지정" lets the model
+              infer from the description + reference image. Persisted on
+              the character so re-generations stay consistent. */}
+          <div className="space-y-1.5">
+            <Label>성별</Label>
+            <div
+              role="radiogroup"
+              aria-label="성별"
+              className="grid grid-cols-3 gap-1 rounded-md border border-input bg-muted/30 p-1"
+            >
+              <GenderOption
+                value="female"
+                current={gender}
+                onSelect={setGender}
+                icon={<Venus className="h-3.5 w-3.5" />}
+                label="여성"
+                disabled={generatingPrompt || generatingPortrait || submitting}
+              />
+              <GenderOption
+                value="male"
+                current={gender}
+                onSelect={setGender}
+                icon={<Mars className="h-3.5 w-3.5" />}
+                label="남성"
+                disabled={generatingPrompt || generatingPortrait || submitting}
+              />
+              <GenderOption
+                value={undefined}
+                current={gender}
+                onSelect={setGender}
+                icon={<HelpCircle className="h-3.5 w-3.5" />}
+                label="미지정"
+                disabled={generatingPrompt || generatingPortrait || submitting}
+              />
+            </div>
           </div>
 
           <div className="space-y-1.5">

@@ -9,6 +9,9 @@ interface PortraitInput {
   description: string;
   // Same shape as the Gemini side — resolved English style hint or empty.
   styleHint?: string;
+  // Subject gender fragment from getGenderEnglishHint() — empty allows
+  // inference from the description.
+  genderHint?: string;
 }
 
 const IMAGE_MODEL = "gpt-image-2";
@@ -29,10 +32,14 @@ function buildPortraitPrompt({
   name,
   description,
   styleHint,
+  genderHint,
 }: PortraitInput): string {
   const effectiveStyle = (styleHint?.trim() || DEFAULT_STYLE_HINT);
+  const subject = genderHint?.trim()
+    ? `Character reference portrait of "${name}", ${genderHint.trim()}.`
+    : `Character reference portrait of "${name}".`;
   return [
-    `Character reference portrait of "${name}".`,
+    subject,
     `Description: ${description}.`,
     "",
     "Composition: solo character, three-quarter view of upper body, neutral pose, looking at the camera, plain neutral background, soft even lighting.",

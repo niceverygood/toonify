@@ -2,6 +2,7 @@ import { Type } from "@google/genai";
 import { getGeminiClient } from "@/lib/gemini/client";
 import { humanizeGeminiError } from "@/lib/gemini/errors";
 import { TEXT_MODEL } from "@/lib/gemini/models";
+import type { CharacterGender } from "@/lib/types";
 
 // Structured-JSON output so we don't have to regex the model's reply.
 // Name + description map 1:1 to the modal's two fields, and the description
@@ -29,6 +30,9 @@ export interface CharacterPromptInput {
   /** Whatever the user has typed in the description field — usually a
    *  short keyword or phrase like "보험설계사" or "냉정한 검사". */
   descriptionSeed?: string;
+  /** Constrain the generated character to a specific gender. Unset
+   *  lets the model pick based on the seed. */
+  gender?: CharacterGender;
 }
 
 export interface CharacterPromptOutput {
@@ -39,12 +43,26 @@ export interface CharacterPromptOutput {
 function buildPrompt({
   nameSeed,
   descriptionSeed,
+  gender,
 }: CharacterPromptInput): string {
   const trimmedName = (nameSeed ?? "").trim();
   const trimmedDesc = (descriptionSeed ?? "").trim();
 
+  // When gender is set, give the model both Korean and English signals
+  // so neither the name nor the description accidentally flip the
+  // character to the other gender.
+  const genderLineKR = gender === "female"
+    ? "이 캐릭터는 반드시 여성입니다."
+    : gender === "male"
+    ? "이 캐릭터는 반드시 남성입니다."
+    : "성별은 시드에서 자연스럽게 결정하세요.";
+
   const namePolicy = trimmedName
     ? `사용자가 입력한 이름: "${trimmedName}". 이 이름을 그대로 사용하세요. 변경 금지.`
+    : gender === "female"
+    ? "한국 여성 이름을 자연스럽게 하나 지어주세요. (예: 이서연, 정유진, 박지민 등)"
+    : gender === "male"
+    ? "한국 남성 이름을 자연스럽게 하나 지어주세요. (예: 박민호, 김도현, 정재훈 등)"
     : "한국 이름을 자연스럽게 하나 지어주세요. (예: 이서연, 박민호, 정유진 등)";
 
   const seedPolicy = trimmedDesc
@@ -56,6 +74,9 @@ ${trimmedDesc}
     : "평범한 한국 일상 웹툰의 주역다운 캐릭터를 자유롭게 한 명 만들어주세요. 너무 평범하지도, 너무 비현실적이지도 않게.";
 
   return `당신은 한국 슬라이스 오브 라이프 웹툰 캐릭터 디자이너입니다. 아래 조건으로 단 한 명의 캐릭터를 작성해주세요.
+
+[성별]
+${genderLineKR}
 
 [이름]
 ${namePolicy}
